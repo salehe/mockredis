@@ -229,6 +229,10 @@ class MockRedis(object):
 
         self.redis[key][attribute] = str(value)
 
+    def hsetnx(self, key, attribute, value):
+        """Emulate hsetnx by using hset..."""
+        self.hset(key, attribute, value)
+
     def hincrby(self, key, attribute, increment=1):
 
         # inititalize hset and value if required
@@ -281,6 +285,9 @@ class MockRedis(object):
                 # Redis returns nil if popping from an empty list
                 pass
 
+    def blpop(self, key, timeout):
+        return self.lpop(key)
+
     def lpush(self, key, *args):
         """Emulate lpush."""
         redis_list = self._get_list(key, 'LPUSH', create=True)
@@ -289,6 +296,9 @@ class MockRedis(object):
         args_reversed = map(str, args)
         args_reversed.reverse()
         self.redis[key] = args_reversed + redis_list
+
+    def ltrim(self, key, start, stop):
+        pass
 
     def rpop(self, key):
         """Emulate lpop."""

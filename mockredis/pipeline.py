@@ -15,11 +15,12 @@ class MockRedisPipeline(MockRedis):
 
     def execute(self):
         """
-        Emulate the execute method. All piped
-        commands are executed immediately
-        in this mock, so this is a no-op.
+        Return any results in the results queue and flush.
         """
-        pass
+        return_results = self.results_queue
+        self.results_queue = []
+
+        return return_results
 
     def __exit__(self, *argv, **kwargs):
         pass

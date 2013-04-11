@@ -12,6 +12,7 @@ class MockRedisPipeline(MockRedis):
         """Initialize the object."""
         self.redis = redis
         self.timeouts = timeouts
+        self.strict = False
 
     def execute(self):
         """

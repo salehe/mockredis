@@ -6,6 +6,19 @@ from mockredis.lock import MockRedisLock
 from mockredis.sortedset import SortedSet
 
 
+def buffer_results_queue(function):
+  """Decorator to buffer returned results.
+
+  This allows the results to be returned as an array from pipeline.execute()
+  """
+  def wrapper(self, *arguments, **keywords):
+    result = function(self, *arguments, **keywords)
+    self.results_queue.append(result)
+    return result
+
+  return wrapper
+
+
 class MockRedis(object):
     """
     A Mock for a redis-py Redis object
@@ -20,6 +33,7 @@ class MockRedis(object):
     timeouts = defaultdict(dict)
     # The pipeline
     pipe = None
+    results_queue = []
 
     def __init__(self, strict=False, **kwargs):
         """
@@ -215,6 +229,10 @@ class MockRedis(object):
 
         self.redis[key][attribute] = str(value)
 
+    def hsetnx(self, key, attribute, value):
+        """Emulate hsetnx by using hset..."""
+        self.hset(key, attribute, value)
+
     def hincrby(self, key, attribute, increment=1):
 
         # inititalize hset and value if required
@@ -267,6 +285,9 @@ class MockRedis(object):
                 # Redis returns nil if popping from an empty list
                 pass
 
+    def blpop(self, key, timeout):
+        return self.lpop(key)
+
     def lpush(self, key, *args):
         """Emulate lpush."""
         redis_list = self._get_list(key, 'LPUSH', create=True)
@@ -275,6 +296,9 @@ class MockRedis(object):
         args_reversed = map(str, args)
         args_reversed.reverse()
         self.redis[key] = args_reversed + redis_list
+
+    def ltrim(self, key, start, stop):
+        pass
 
     def rpop(self, key):
         """Emulate lpop."""
@@ -324,6 +348,7 @@ class MockRedis(object):
 
     #### SET COMMANDS ####
 
+    @buffer_results_queue
     def sadd(self, key, *values):
         """Emulate sadd."""
         redis_set = self._get_set(key, 'SADD', create=True)
@@ -332,6 +357,7 @@ class MockRedis(object):
         after_count = len(redis_set)
         return after_count - before_count
 
+    @buffer_results_queue
     def scard(self, key):
         """Emulate scard."""
         redis_set = self._get_set(key, 'SADD')
@@ -496,6 +522,7 @@ class MockRedis(object):
         self.redis[dest] = intersection
         return len(intersection)
 
+    @buffer_results_queue
     def zrange(self, name, start, end, desc=False, withscores=False,
                score_cast_func=float):
         zset = self._get_zset(name, "ZRANGE")
@@ -542,6 +569,7 @@ class MockRedis(object):
         remove_count = lambda value: 1 if zset.remove(value) else 0
         return sum((remove_count(value) for value in values))
 
+    @buffer_results_queue
     def zremrangebyrank(self, name, start, end):
         zset = self._get_zset(name, "ZREMRANGEBYRANK")
 
